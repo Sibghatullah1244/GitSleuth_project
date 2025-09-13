@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Repo Q/A App</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+    h2 { color: #333; }
+    .card { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, button { padding: 8px; margin: 5px; border-radius: 5px; border: 1px solid #ccc; }
+    button { background: #007BFF; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #statusBox { padding: 10px; margin-top: 10px; font-weight: bold; color: #444; }
+    .ready { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h2>Repository Q/A Web App</h2>
+
+  <div class="card">
+    <h3>1. Index a Repo</h3>
+    <input type="text" id="repo_url" placeholder="Enter GitHub repo URL" size="50"/>
+    <button onclick="startIndexing()">Start Indexing</button>
+    <div id="statusBox"></div>
+  </div>
+
+  <div class="card">
+    <h3>2. Ask a Question</h3>
+    <input type="text" id="question" placeholder="Ask a question" size="50"/>
+    <input type="text" id="session_id" placeholder="Session ID" size="40"/>
+    <button onclick="askQuestion()">Ask</button>
+    <p><b>Answer:</b> <span id="answer"></span></p>
+    <p><b>Sources:</b> <span id="sources"></span></p>
+  </div>
+
+<script>
+let currentSessionId = null;
+let pollInterval = null;
+
+async function startIndexing() {
+  const repoUrl = document.getElementById("repo_url").value;
+  let res = await fetch("/index", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({repo_url: repoUrl})
+  });
+  let data = await res.json();
+  currentSessionId = data.session_id;
+  document.getElementById("session_id").value = currentSessionId;
+  document.getElementById("statusBox").innerText = "Session " + currentSessionId + " | " + data.message;
+  startPollingStatus(currentSessionId);
+}
+
+function startPollingStatus(sessionId) {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(async () => {
+    let res = await fetch("/status/" + sessionId);
+    let data = await res.json();
+    let box = document.getElementById("statusBox");
+    box.innerText = "[" + data.status.toUpperCase() + "] " + data.message;
+    if (data.status === "ready" || data.status === "error") {
+      clearInterval(pollInterval);
+      box.className = data.status === "ready" ? "ready" : "error";
+    }
+  }, 2000);
+}
+
+async function askQuestion() {
+  const q = document.getElementById("question").value;
+  const sid = document.getElementById("session_id").value;
+  let res = await fetch("/query", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({question: q, session_id: sid})
+  });
+  let data = await res.json();
+  document.getElementById("answer").innerText = data.answer || data.error;
+  document.getElementById("sources").innerText = JSON.stringify(data.sources || []);
+}
+</script>
+</body>
+</html>

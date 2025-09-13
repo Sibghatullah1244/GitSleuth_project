@@ -1,0 +1,13 @@
+flask
+gitpython
+langchain
+langchain_community
+langchain_huggingface
+langchain-openai
+faiss-cpu
+sentence-transformers
+transformers
+torch
+openai
+uvicorn
+python-dotenv
